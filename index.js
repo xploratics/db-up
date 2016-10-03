@@ -1,9 +1,10 @@
-var debug = require('debug')('db-updater');
+var co = require('co');
+var debug = require('debug')('db-up');
 var path = require('path');
 var Promise = require('bluebird');
 var readdir = Promise.promisify(require("fs").readdir)
 
-exports.update = function (options) {
+exports.update = co.wrap(function* (options) {
     if (!options) options = {};
 
     var data = options.data;
@@ -14,69 +15,74 @@ exports.update = function (options) {
 
     debug(`reading directory ${root}`);
 
-    return readdir(root)
-        .then(function (files) {
-            debug(`found ${files.length} file(s) in folder`);
+    var files = yield readdir(root);
+    debug(`found ${files.length} file(s) in folder`);
 
-            var patches = [];
+    var patches = filterPatches(files, root, currentVersion);
+    debug(`found ${patches.length} file(s) to be applied`);
 
-            for (var i = files.length - 1; i > -1; i--) {
-                var f = files[i];
+    var results = [];
 
-                // use only the files named correctly.
-                if (!f.match(/^[0-9]+.js$/gi))
-                    continue;
+    for (var i = 0; i < patches.length; i++)
+        results.push(yield applyPatch(patches[i]));
 
-                var id = parseInt(f.replace(/.js$/gi, ""));
+    debug('completed');
+    return results;
 
-                // accept patches that comes after the current version.
-                if (id <= currentVersion)
-                    continue;
+    function* applyPatch(patch) {
 
-                var filename = path.join(root, f);
-                patches.push({ filename, id });
-            }
-
-            patches.sort(sortPatches);
-            debug(`found ${patches.length} file(s) to be applied`);
-            return patches;
-        })
-        .mapSeries(applyPatch)
-        .then(completed);
-
-    function applyPatch(patch) {
-        return new Promise(apply).then(completed, error);
-
-        function apply(resolve, reject) {
+        try {
             onApplyingPatch(patch);
             debug(`applying patch ${patch.id}`);
 
             var r = require(patch.filename)(data);
+            var result;
+            switch (typeof r) {
+                case 'function':
+                case 'object':
+                    result = yield r;
+                    break;
+                default:
+                    result = r;
+                    break;
+            }
 
-            // if a promise is returned, then use the promise
-            if (r.then)
-                r.then(resolve, reject);
-            else
-                resolve(r);
-        }
+            var v = { patch, result };
 
-        function completed(result) {
-            var output = { patch, result };
+            onAppliedPatch(v);
             debug('patch applied');
-            onAppliedPatch(output);
-            return output;
-        }
 
-        function error(err) {
+            return v;
+
+        } catch (err) {
             debug(`error while applying patch ${err.toString()}`);
-            return Promise.reject(err);
+            throw err;
         }
     }
-};
+});
 
-function completed(e) {
-    debug('completed');
-    return e;
+function filterPatches(files, root, currentVersion) {
+    var patches = [];
+
+    for (var i = files.length - 1; i > -1; i--) {
+        var f = files[i];
+
+        // use only the files named correctly.
+        if (!f.match(/^[0-9]+.js$/gi))
+            continue;
+
+        var id = parseInt(f.replace(/.js$/gi, ""));
+
+        // accept patches that comes after the current version.
+        if (id <= currentVersion)
+            continue;
+
+        var filename = path.join(root, f);
+        patches.push({ filename, id });
+    }
+
+    patches.sort(sortPatches);
+    return patches;
 }
 
 function noop() { }

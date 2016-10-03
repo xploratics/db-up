@@ -24,6 +24,7 @@
   "homepage": "https://github.com/xploratics/db-up#readme",
   "dependencies": {
     "bluebird": "^3.4.6",
+    "co": "^4.6.0",
     "debug": "^2.2.0"
   },
   "devDependencies": {

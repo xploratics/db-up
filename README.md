@@ -3,6 +3,7 @@
 [![devDependencies Status](https://david-dm.org/xploratics/db-up/dev-status.svg)](https://david-dm.org/xploratics/db-up?type=dev)
 
 # db-up
+
 This component allow to migrate a database (schema / data) from a version to the most recent version.
 Using javascript files in a folder, will find those files and execute them in sequencial order. 
 
@@ -21,7 +22,7 @@ updater
 ## Installation
 
 ```bash
-$ npm install db-up
+npm install db-up
 ```
 
 Put update files in a `./patches` folder.
@@ -38,9 +39,11 @@ project
 ```
 
 ## update
+
 Updater function takes an options object with the following parameters.
 
 ### Returns
+
 A promise that is resolved when all patches as been applied.
 If a patch fail, all subsequent patches are not run and the updater invoke
 the catch branch of the promise.
@@ -48,22 +51,32 @@ the catch branch of the promise.
 ### Options
 
 - data:
+
 Optionnal data that can be passed to the patches.
 Usefull for passing a dbContext or connection string.
+
 - path:
+
 The path to the folder containing the patches. Default is `./patches`
+
 - version:
+
 The current version of the database.
-The updater will run the script where the name is greater than this number. 
+The updater will run the script where the name is greater than this number.
+
 - onApplyingPatch:
+
 A function called before applying a patch.
+
 - onAppliedPatch:
+
 A function called after a patch has been applied.
 If the patch cannot be applied, the event won't be called.
 
 ## Example of a patch file.
 
 Name the file as 1.js and put it in the `./patches` folder.
+
 ```js
 var Promise = require('bluebird');
 
@@ -85,6 +98,7 @@ module.exports = function () {
 ```
 
 ## Development and test
+
 Clone the project
 
 ```bash
@@ -102,4 +116,5 @@ npm test
 ```
 
 ## License
+
 MIT License
